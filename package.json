@@ -1,0 +1,31 @@
+{
+  "name": "cordova-plugin-camera-recorder",
+  "version": "0.0.1",
+  "description": "A cordova plugin for preview and record a camera video.",
+  "cordova": {
+    "id": "cordova-plugin-camera-recorder",
+    "platforms": [
+      "android"
+    ]
+  },
+  "keywords": [
+    "Camera",
+    "Recorder",
+    "Preview",
+    "ecosystem:cordova",
+    "cordova-android"
+  ],
+  "engines": [{
+    "name": "cordova",
+    "version": ">=3.0.0"
+  }],
+  "dependencies": {
+    "xml2js": "^0.4.19"
+  },
+  "author": "Stanley Idesis <stan.idesis@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/DonPools/cordova-camera-recorder/issues"
+  },
+  "homepage": "https://github.com/DonPools/cordova-camera-recorder/"
+}
