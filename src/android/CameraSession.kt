@@ -1,5 +1,6 @@
 package cordova.plugin.camerarecorder
 
+import ImageUtil
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
@@ -22,7 +23,6 @@ import org.apache.cordova.CallbackContext
 import org.apache.cordova.PluginResult
 import org.json.JSONObject
 import java.io.File
-import java.nio.ByteBuffer
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.coroutines.resumeWithException
@@ -39,6 +39,7 @@ class CameraSession(
     private lateinit var camera: CameraDevice
     private lateinit var captureSession: CameraCaptureSession
     private lateinit var imageReader: ImageReader
+    private val imageFormat = ImageFormat.YUV_420_888
 
     private val cameraThread = HandlerThread("CameraThread").apply { start() }
     private val callbackThread = HandlerThread("CallbackThread").apply { start() }
@@ -93,7 +94,7 @@ class CameraSession(
 
     fun onDestroy() {
         try {
-            camera?.close()
+            camera.close()
         } catch (ex: Exception) {
             Log.e(TAG, "camera destroyed failed", ex)
         }
@@ -107,7 +108,7 @@ class CameraSession(
         val cameraId = getCameraId(options.cameraFacing)
         camera = openCamera(cameraManager, cameraId, cameraHandler)
 
-        imageReader = ImageReader.newInstance(options.canvasWidth, options.canvasHeight, ImageFormat.JPEG, 2)
+        imageReader = ImageReader.newInstance(options.canvasWidth, options.canvasHeight, imageFormat, 2)
 
         val targets = listOf(imageReader.surface, recorderSurface)
         captureSession = createCaptureSession(targets, camera, cameraHandler)
@@ -135,28 +136,35 @@ class CameraSession(
             return null
         }
 
-        recorder?.stop()
-        captureSession?.stopRepeating()
+        if (recording) {
+            recorder.stop()
+        }
+
+        captureSession.stopRepeating()
         camera.close()
 
         if (!recording) {
             return null
         }
 
+        previewing = false
+        recording = false
+
         return outputFile
     }
 
     private fun onCaputre(image: Image) {
+        val nv21 = ImageUtil.YUV_420_888toNV21(image)
+        val width = image.width
+        val height = image.height
 
-        val buffer: ByteBuffer = image.getPlanes().get(0).getBuffer()
-        val bytes = ByteArray(buffer.remaining())
-        buffer.get(bytes)
-
-        val outStart = System.currentTimeMillis()
         Handler(callbackThread.looper).post {
             val start = System.currentTimeMillis()
+
+            val jpegBytes = ImageUtil.NV21toJPEG(nv21, width, height)
             val imageData = "data:image/jpeg;base64," +
-                    Base64.encodeToString(bytes, Base64.DEFAULT)
+                    Base64.encodeToString(jpegBytes, Base64.DEFAULT)
+            Log.i(TAG, "compress cost: " + (System.currentTimeMillis() - start))
 
             val data = JSONObject()
             val output = JSONObject()
@@ -171,9 +179,8 @@ class CameraSession(
             val res = PluginResult(PluginResult.Status.OK, data)
             res.keepCallback = true
             previewCtx.sendPluginResult(res)
-            Log.i(TAG, "callback cost: " + (System.currentTimeMillis() - start))
+            Log.i(TAG, "compress and callback cost: " + (System.currentTimeMillis() - start))
         }
-        Log.i(TAG, "outside callback cost: " + (System.currentTimeMillis() - outStart))
     }
 
     private fun getCameraId(facing: Int): String {
@@ -253,6 +260,7 @@ class CameraSession(
                         super.onCaptureSequenceAborted(session, sequenceId)
                         Log.i(TAG, "capture sequence aborted: " + sequenceId)
                     }
+
                     override fun onCaptureFailed(session: CameraCaptureSession, request: CaptureRequest, failure: CaptureFailure) {
                         super.onCaptureFailed(session, request, failure)
                         Log.i(TAG, "capture failed: " + failure)

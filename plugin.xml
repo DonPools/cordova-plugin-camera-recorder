@@ -44,6 +44,7 @@
 
         <source-file src="src/android/CameraRecorder.kt" target-dir="app/src/main/java/cordova/plugin/camerarecorder" />
         <source-file src="src/android/CameraSession.kt" target-dir="app/src/main/java/cordova/plugin/camerarecorder" />
+        <source-file src="src/android/ImageUtils.kt" target-dir="app/src/main/java/cordova/plugin/camerarecorder" />
         <source-file src="src/android/Options.kt" target-dir="app/src/main/java/cordova/plugin/camerarecorder" />
     
         <source-file src="src/android/build-extras.gradle" target-dir="."/>

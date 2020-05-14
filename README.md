@@ -1,7 +1,3 @@
-[![NPM Version][npm-image]][npm-url]
-[![NPM Downloads][downloads-image]][downloads-url]
-[![Codacy Badge][codacy-image]][codacy-url]
-
 # Cordova CameraRecorder plugin
 
 ## Status

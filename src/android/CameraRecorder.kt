@@ -71,7 +71,7 @@ class CordovaCameraRecorder : CordovaPlugin() {
         if (!PermissionHelper.hasPermission(this, Manifest.permission.CAMERA) ||
                 !PermissionHelper.hasPermission(this, Manifest.permission.RECORD_AUDIO) ||
                 !PermissionHelper.hasPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) ||
-                !PermissionHelper.hasPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) ) {
+                !PermissionHelper.hasPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
             deferPluginResultCallback(callbackContext)
             PermissionHelper.requestPermissions(
                     this, SEC_START_CAPTURE,
