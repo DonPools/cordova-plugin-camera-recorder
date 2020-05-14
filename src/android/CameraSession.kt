@@ -4,6 +4,7 @@ import ImageUtil
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.ImageFormat
 import android.hardware.camera2.*
 import android.media.Image
@@ -22,7 +23,9 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import org.apache.cordova.CallbackContext
 import org.apache.cordova.PluginResult
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.nio.ByteBuffer
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.coroutines.resumeWithException
@@ -38,9 +41,7 @@ class CameraSession(
     private var recording = false
     private lateinit var camera: CameraDevice
     private lateinit var captureSession: CameraCaptureSession
-    private lateinit var imageReader: ImageReader
-    private val imageFormat = ImageFormat.YUV_420_888
-
+    private val imageFormat = ImageFormat.JPEG
     private val cameraThread = HandlerThread("CameraThread").apply { start() }
     private val callbackThread = HandlerThread("CallbackThread").apply { start() }
 
@@ -52,10 +53,9 @@ class CameraSession(
         activity.getSystemService(Context.CAMERA_SERVICE) as CameraManager
     }
 
-    private val windowManager: WindowManager by lazy {
-        activity.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+    private val imageReader: ImageReader by lazy {
+        ImageReader.newInstance(options.canvasWidth, options.canvasHeight, imageFormat, 10)
     }
-
     private val outputFile: File by lazy { createFile(activity, "mp4") }
     private val recorder: MediaRecorder by lazy { createRecorder(recorderSurface) }
 
@@ -108,11 +108,9 @@ class CameraSession(
         val cameraId = getCameraId(options.cameraFacing)
         camera = openCamera(cameraManager, cameraId, cameraHandler)
 
-        imageReader = ImageReader.newInstance(options.canvasWidth, options.canvasHeight, imageFormat, 2)
-
         val targets = listOf(imageReader.surface, recorderSurface)
         captureSession = createCaptureSession(targets, camera, cameraHandler)
-        initImageReader(imageReader, cameraHandler)
+        initImageReader()
 
         previewing = true
     }
@@ -154,14 +152,12 @@ class CameraSession(
     }
 
     private fun onCaputre(image: Image) {
-        val nv21 = ImageUtil.YUV_420_888toNV21(image)
-        val width = image.width
-        val height = image.height
+        val buffer: ByteBuffer = image.getPlanes().get(0).getBuffer()
+        val jpegBytes = ByteArray(buffer.remaining())
+        buffer.get(jpegBytes)
 
         Handler(callbackThread.looper).post {
             val start = System.currentTimeMillis()
-
-            val jpegBytes = ImageUtil.NV21toJPEG(nv21, width, height)
             val imageData = "data:image/jpeg;base64," +
                     Base64.encodeToString(jpegBytes, Base64.DEFAULT)
             Log.i(TAG, "compress cost: " + (System.currentTimeMillis() - start))
@@ -249,10 +245,10 @@ class CameraSession(
         }, handler)
     }
 
-    private fun initImageReader(imageReader: ImageReader, handler: Handler?) {
+    private fun initImageReader() {
         captureSession.setRepeatingRequest(
                 captureSession.device.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW).apply {
-                    set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, Range(1, options.fps))
+                    //set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, Range(options.fps, options.fps))
                     addTarget(imageReader.surface)
                 }.build(),
                 object : CameraCaptureSession.CaptureCallback() {
@@ -273,7 +269,7 @@ class CameraSession(
                 onCaputre(image)
                 image.close()
             }
-        }, handler)
+        }, cameraHandler)
     }
 
     private fun createRecorder(surface: Surface) = MediaRecorder().apply {
