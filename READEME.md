@@ -4,15 +4,17 @@
 
 # Cordova CanvasCamera plugin
 
+## Status
+capture and record can work. Some bugs need to fix.
+
 ## Plugin's Purpose
 The purpose of the plugin is to capture video to preview camera in a web page's canvas element.
 Allows to select front or back camera and to control the flash.
 
-## Working Demo
-Having trouble using CanvasCamera Plugin ? [Check our working demo here](https://github.com/VirtuoWorks/CanvasCameraDemo).
+The origin project is https://github.com/VirtuoWorks/CanvasCameraPlugin, which is written by Java.
+This project is rewritten by Kotlin by the reason of the origin project is written by Andorid camera1 component which is deprecated.
 
 ## Supported Platforms
-- iOS
 - Android
 
 ## Dependencies
@@ -25,29 +27,18 @@ The plugin can either be installed into the local development environment or clo
 Through the [Command-line Interface][CLI]:
 
 ```bash
-cordova plugin add https://github.com/VirtuoWorks/CanvasCameraPlugin.git && cordova prepare
+cordova plugin add https://github.com/DonPools/cordova-plugin-camera-recorder.git && cordova prepare
 ```
 
 ### Removing the Plugin from your project
 Through the [Command-line Interface][CLI]:
 
 ```bash
-cordova plugin remove com.virtuoworks.cordova-plugin-canvascamera
+cordova plugin remove cordova-plugin-camera-recorder
 ```
-
-## TypeScript/Angular 2 support
-The CanvasCamera plugin type definition has been added to the DefinitelyTyped repository (see commit [here](https://github.com/DefinitelyTyped/DefinitelyTyped/commit/7f7f502db804112161ef06e712275591d8c4a835)) thanks to a benevolent [contributor](https://github.com/VirtuoWorks/CanvasCameraPlugin/issues/8).
-
-If you wish to install the type definition file :
-
-```bash
-npm install --save @types/cordova-plugin-canvascamera
-```
-
-You can check this [NPM](https://www.npmjs.com/package/@types/cordova-plugin-canvascamera) page for more informations about this type definition.
 
 ## Using the plugin (JavaScript)
-The plugin creates the object ```window.plugin.CanvasCamera``` with the following methods:
+The plugin creates the object ```window.plugins.cameraRecorder``` with the following methods:
 
 ### Plugin initialization
 The plugin and its methods are not available before the *deviceready* event has been fired.
@@ -58,8 +49,8 @@ document.addEventListener('deviceready', function () {
 
     // Call the initialize() function with canvas element reference
     var objCanvas = document.getElementById('canvas');
-    window.plugin.CanvasCamera.initialize(objCanvas);
-    // window.plugin.CanvasCamera is now available
+    window.plugins.cameraRecorder.initialize(objCanvas);
+    // window.plugins.cameraRecorder is now available
 
 }, false);
 ```
@@ -69,7 +60,7 @@ Start capturing video as images from camera to preview camera on web page.<br>
 `capture` callback function will be called with image data (image file url) each time the plugin takes an image for a frame.<br>
 
 ```javascript
-window.plugin.CanvasCamera.start(options);
+window.plugins.cameraRecorder.start(options);
 ```
 
 This function starts a video capturing session, then the plugin takes each frame as a JPEG image and gives its url to web page calling the `capture` callback function with the image url(s).<br>
@@ -81,20 +72,20 @@ The `capture` callback function will draw the image inside a canvas element to d
 var options = {
     cameraFacing: 'front',
 };
-window.plugin.CanvasCamera.start(options);
+window.plugins.cameraRecorder.start(options);
 ```
 ### `flashMode`
 Set flash mode for camera.<br>
 
 ```javascript
-window.plugin.CanvasCamera.flashMode(true);
+window.plugins.cameraRecorder.flashMode(true);
 ```
 
 ### `cameraPosition`
 Change input camera to 'front' or 'back' camera.
 
 ```javascript
-window.plugin.CanvasCamera.cameraPosition('front');
+window.plugins.cameraRecorder.cameraPosition('front');
 ```
 
 ### Options
@@ -113,7 +104,7 @@ Optional parameters to customize the settings.
       height: 288
     },
     fps: 30,
-    use: 'file',
+    use: 'data',
     flashMode: false,
     thumbnailRatio: 1/6,
     cameraFacing: 'front' // or 'back',
@@ -155,9 +146,9 @@ Optional parameters to customize the settings.
 ```javascript
 let fullsizeCanvasElement = document.getElementById('fullsize-canvas');
 
-CanvasCamera.initialize(fullsizeCanvasElement);
+window.plugins.cameraRecorder.initialize(fullsizeCanvasElement);
 
-let options:CanvasCamera.CanvasCameraOptions = {
+let options = {
     cameraFacing: 'back',
     onAfterDraw: function(frame) {
       // do something with each frame
@@ -166,7 +157,7 @@ let options:CanvasCamera.CanvasCameraOptions = {
     }
 };
 
-CanvasCamera.start(options);
+window.plugins.cameraRecorder.start(options);
 ```
 
 ### With thumbnail video
@@ -174,9 +165,9 @@ CanvasCamera.start(options);
 let fullsizeCanvasElement = document.getElementById('fullsize-canvas');
 let thumbnailCanvasElement = document.getElementById('thumbnail-canvas');
 
-CanvasCamera.initialize(fullsizeCanvasElement, thumbnailCanvasElement);
+window.plugins.cameraRecorder.initialize(fullsizeCanvasElement, thumbnailCanvasElement);
 
-let options:CanvasCamera.CanvasCameraOptions = {
+let options = {
     cameraFacing: 'front',
     fps: 15,
     thumbnailRatio: 1/6,
@@ -187,7 +178,7 @@ let options:CanvasCamera.CanvasCameraOptions = {
     }
 };
 
-CanvasCamera.start(options);
+window.plugins.cameraRecorder.start(options);
 ```
 
 ## Contributing
@@ -197,18 +188,3 @@ CanvasCamera.start(options);
 3. Commit your changes (`git commit -am 'Added some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)
 5. Create new Pull Request
-
-## License
-
-This software is released under the [MIT License][mit-license].
-
-[cordova]: https://cordova.apache.org
-[PGB]: http://docs.phonegap.com/phonegap-build/
-[CLI]: http://cordova.apache.org/docs/en/latest/guide/cli/index.html
-[mit-license]: https://opensource.org/licenses/MIT
-[npm-image]: https://img.shields.io/npm/v/com.virtuoworks.cordova-plugin-canvascamera.svg
-[npm-url]: https://www.npmjs.com/package/com.virtuoworks.cordova-plugin-canvascamera
-[downloads-image]: https://img.shields.io/npm/dm/com.virtuoworks.cordova-plugin-canvascamera.svg
-[downloads-url]: https://www.npmjs.com/package/com.virtuoworks.cordova-plugin-canvascamera
-[codacy-image]: https://api.codacy.com/project/badge/Grade/dcccd741d63d4b0ea51ae3ccb2cd7d89
-[codacy-url]: https://www.codacy.com/app/VirtuoWorks/CanvasCameraPlugin?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=VirtuoWorks/CanvasCameraPlugin&amp;utm_campaign=Badge_Grade
