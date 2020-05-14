@@ -7,6 +7,7 @@ import android.graphics.ImageFormat
 import android.hardware.camera2.*
 import android.media.Image
 import android.media.ImageReader
+import android.media.MediaCodec
 import android.media.MediaRecorder
 import android.os.Handler
 import android.os.HandlerThread
@@ -55,10 +56,50 @@ class CameraSession(
     }
 
     private val outputFile: File by lazy { createFile(activity, "mp4") }
-    private val recorder: MediaRecorder by lazy { createRecorder() }
+    private val recorder: MediaRecorder by lazy { createRecorder(recorderSurface) }
 
+    private val recorderSurface: Surface by lazy {
+        // Get a persistent Surface from MediaCodec, don't forget to release when done
+        val surface = MediaCodec.createPersistentInputSurface()
 
-    open suspend fun startCapture() {
+        // Prepare and release a dummy MediaRecorder with our new surface
+        // Required to allocate an appropriately sized buffer before passing the Surface as the
+        //  output target to the capture session
+        createRecorder(surface).apply {
+            prepare()
+            release()
+        }
+
+        surface
+    }
+
+    /** Requests used for preview and recording in the [CameraCaptureSession] */
+    private val recordRequest: CaptureRequest by lazy {
+        // Capture request holds references to target surfaces
+        captureSession.device.createCaptureRequest(CameraDevice.TEMPLATE_RECORD).apply {
+            // Add the preview and recording surface targets
+            addTarget(imageReader.surface)
+            addTarget(recorderSurface)
+            // Sets user requested FPS for all targets
+            set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, Range(options.fps, options.fps))
+        }.build()
+    }
+
+    fun onStop() {
+    }
+
+    fun onResume() {
+    }
+
+    fun onDestroy() {
+        try {
+            camera?.close()
+        } catch (ex: Exception) {
+            Log.e(TAG, "camera destroyed failed", ex)
+        }
+    }
+
+    suspend fun startCapture() {
         if (previewing) {
             throw(Exception("Already capturing"))
         }
@@ -67,19 +108,20 @@ class CameraSession(
         camera = openCamera(cameraManager, cameraId, cameraHandler)
 
         imageReader = ImageReader.newInstance(options.canvasWidth, options.canvasHeight, ImageFormat.JPEG, 2)
-        captureSession = createCaptureSession(listOf(imageReader.surface), camera, cameraHandler)
-        Log.i(TAG, "capture sesssion created.")
+
+        val targets = listOf(imageReader.surface, recorderSurface)
+        captureSession = createCaptureSession(targets, camera, cameraHandler)
         initImageReader(imageReader, cameraHandler)
 
         previewing = true
     }
 
-
-    open fun startRecord() {
+    fun startRecord() {
         if (!previewing || recording) {
             throw(Exception("recorder is recording"))
         }
 
+        captureSession.setRepeatingRequest(recordRequest, null, cameraHandler)
         recorder.apply {
             prepare()
             start()
@@ -88,8 +130,20 @@ class CameraSession(
         recording = true
     }
 
-    open fun stop(): Boolean {
-        return true
+    fun stop(): File? {
+        if (!previewing) {
+            return null
+        }
+
+        recorder?.stop()
+        captureSession?.stopRepeating()
+        camera.close()
+
+        if (!recording) {
+            return null
+        }
+
+        return outputFile
     }
 
     private fun onCaputre(image: Image) {
@@ -214,8 +268,7 @@ class CameraSession(
         }, handler)
     }
 
-    /** Creates a [MediaRecorder] instance using the provided [Surface] as input */
-    private fun createRecorder() = MediaRecorder().apply {
+    private fun createRecorder(surface: Surface) = MediaRecorder().apply {
         setAudioSource(MediaRecorder.AudioSource.MIC)
         setVideoSource(MediaRecorder.VideoSource.SURFACE)
         setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
@@ -225,6 +278,7 @@ class CameraSession(
         setVideoSize(options.width, options.height)
         setVideoEncoder(MediaRecorder.VideoEncoder.H264)
         setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+        setInputSurface(surface)
     }
 
 

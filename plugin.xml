@@ -31,7 +31,15 @@
         <config-file target="res/xml/config.xml" parent="/*">
             <feature name="CordovaCameraRecorder">
                 <param name="android-package" value="com.cordova.plugin.camerarecorder.CordovaCameraRecorder"/>
+                <param name="onload" value="true" />
             </feature>
+        </config-file>
+
+        <config-file parent="/manifest" target="AndroidManifest.xml">
+            <uses-permission android:name="android.permission.CAMERA" />
+            <uses-permission android:name="android.permission.RECORD_AUDIO" />
+            <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+            <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
         </config-file>
 
         <source-file src="src/android/CameraRecorder.kt" target-dir="app/src/main/java/cordova/plugin/camerarecorder" />

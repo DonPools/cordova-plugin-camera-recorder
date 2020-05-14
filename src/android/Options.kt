@@ -3,11 +3,6 @@ package com.cordova.plugin.camerarecorder
 import android.hardware.camera2.CameraCharacteristics
 import org.json.JSONObject
 
-
-class RecordOptions() {
-
-}
-
 class PreviewOptions() {
     open var fps = 30
     open var width = 352

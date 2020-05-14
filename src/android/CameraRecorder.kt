@@ -21,7 +21,7 @@ fun deferPluginResultCallback(callbackContext: CallbackContext) {
 const val SEC_START_CAPTURE = 0
 
 class CordovaCameraRecorder : CordovaPlugin() {
-    var session: CameraSession? = null
+    var cameraSession: CameraSession? = null
     lateinit var activity: Activity
 
     override fun initialize(cordova: CordovaInterface, webView: CordovaWebView?) {
@@ -31,7 +31,7 @@ class CordovaCameraRecorder : CordovaPlugin() {
 
     @Throws(JSONException::class)
     override fun execute(action: String, data: JSONArray, callbackContext: CallbackContext): Boolean {
-        Log.i(TAG, "execute: " + action + "  callbackId: " + callbackContext.callbackId)
+        Log.i(TAG, "exec: " + action + " data: " + data)
         when (action) {
             "startCapture" -> handleStartCapture(data, callbackContext)
             "startRecord" -> handleStartRecord(data, callbackContext)
@@ -47,22 +47,37 @@ class CordovaCameraRecorder : CordovaPlugin() {
     override fun onStop() {
         super.onStop()
         Log.i(TAG, "onStop")
+        cameraSession?.onStop()
     }
 
     override fun onResume(multitasking: Boolean) {
         super.onResume(multitasking)
         Log.i(TAG, "onResume")
+        cameraSession?.onResume()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        Log.i(TAG, "onDestroy")
+        cameraSession?.onDestroy()
     }
 
     fun handleStartCapture(data: JSONArray, callbackContext: CallbackContext): Boolean {
-        if (session != null) {
+        if (cameraSession != null) {
             callbackContext.error("Capture session duplicated")
             return true
         }
 
-        if (!PermissionHelper.hasPermission(this, Manifest.permission.CAMERA)) {
+        if (!PermissionHelper.hasPermission(this, Manifest.permission.CAMERA) ||
+                !PermissionHelper.hasPermission(this, Manifest.permission.RECORD_AUDIO) ||
+                !PermissionHelper.hasPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) ||
+                !PermissionHelper.hasPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) ) {
             deferPluginResultCallback(callbackContext)
-            PermissionHelper.requestPermission(this, SEC_START_CAPTURE, Manifest.permission.CAMERA)
+            PermissionHelper.requestPermissions(
+                    this, SEC_START_CAPTURE,
+                    arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO,
+                            Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            )
             return true
         }
 
@@ -76,15 +91,15 @@ class CordovaCameraRecorder : CordovaPlugin() {
             return true
         }
 
-        session = CameraSession(activity, options, callbackContext)
+        cameraSession = CameraSession(activity, options, callbackContext)
         deferPluginResultCallback(callbackContext)
         GlobalScope.launch {
             try {
-                session!!.startCapture()
+                cameraSession!!.startCapture()
             } catch (ex: Exception) {
                 Log.e(TAG, "startCapture failed.", ex)
                 callbackContext.error("startCapture failed: " + ex)
-                session = null
+                cameraSession = null
             }
         }
 
@@ -92,29 +107,48 @@ class CordovaCameraRecorder : CordovaPlugin() {
     }
 
     fun handleStartRecord(args: JSONArray, callbackContext: CallbackContext): Boolean {
-        if (session == null) {
+        if (cameraSession == null) {
             callbackContext.error("Capture session not started")
             return true
         }
 
-        try {
-            session!!.startRecord()
-        } catch (ex: Exception) {
-            Log.e(TAG, "startRecord failed.", ex)
-            callbackContext.error("Start record failed:" + ex)
+        cordova.threadPool.submit {
+            try {
+                cameraSession!!.startRecord()
+            } catch (ex: Exception) {
+                Log.e(TAG, "startRecord failed.", ex)
+                callbackContext.error("Start record failed:" + ex)
+            }
+
+            callbackContext.success("OK")
         }
 
         return true
     }
 
     fun handleStopCapture(args: JSONArray, callbackContext: CallbackContext): Boolean {
-        if (session == null) {
+        if (cameraSession == null) {
             callbackContext.error("Capture session not started")
             return false
         }
 
-        //session!!.stop(callbackContext)
-        session = null
+        val prevSession = cameraSession
+        cordova.threadPool.submit {
+            try {
+                val outputFile = prevSession!!.stop()
+
+                val result = JSONObject()
+                result.put("file", outputFile?.absolutePath)
+                callbackContext.success(result)
+            } catch (ex: Exception) {
+                Log.e(TAG, "stop failed", ex)
+                callbackContext.error("stop failed: " + ex)
+            }
+
+
+        }
+
+        cameraSession = null
         return true
     }
 

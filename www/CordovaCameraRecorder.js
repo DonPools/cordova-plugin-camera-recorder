@@ -480,6 +480,18 @@ CanvasCamera.prototype.start = function(userOptions, onError, onSuccess) {
   }.bind(this), this.nativeClass, 'startCapture', [this.options]);
 };
 
+CanvasCamera.prototype.startRecord = function(onError, onSuccess) {
+  exec(function(data) {
+    if (onSuccess && typeof onSuccess === 'function') {
+      onSuccess(data);
+    }
+  }, function(error) {
+    if (onError && typeof onError === 'function') {
+      onError(error);
+    }
+  }, this.nativeClass, 'startRecord', []);
+}
+
 CanvasCamera.prototype.stop = function(onError, onSuccess) {
   this.disableRenderers();
   exec(function(data) {
