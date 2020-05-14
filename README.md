@@ -2,7 +2,7 @@
 [![NPM Downloads][downloads-image]][downloads-url]
 [![Codacy Badge][codacy-image]][codacy-url]
 
-# Cordova CanvasCamera plugin
+# Cordova CameraRecorder plugin
 
 ## Status
 capture and record can work. Some bugs need to fix.
