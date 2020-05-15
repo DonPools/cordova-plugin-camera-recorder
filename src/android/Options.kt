@@ -5,8 +5,6 @@ import org.json.JSONObject
 
 class PreviewOptions() {
     open var fps = 30
-    open var width = 352
-    open var height = 288
     open var canvasWidth = 352
     open var canvasHeight = 288
     open var captureWidth = 352
@@ -14,6 +12,7 @@ class PreviewOptions() {
     open var hasThumbnail = false
     open var thumbnailRatio: Double = 1 / 6.0
     open var use = "data"
+    open var facing = ""
     open var flashMode = CameraCharacteristics.FLASH_MODE_OFF
     open var cameraFacing = CameraCharacteristics.LENS_FACING_FRONT
 
@@ -61,26 +60,13 @@ class PreviewOptions() {
 
         // lens orientation
         if (options.has(K_LENS_ORIENTATION_KEY)) {
+            facing = options.getString(K_LENS_ORIENTATION_KEY)
             cameraFacing = getCameraFacing(options.getString(K_LENS_ORIENTATION_KEY))
         }
 
         // fps
         if (options.has(K_FPS_KEY)) {
             fps = options.getInt(K_FPS_KEY)
-        }
-
-        // width
-        if (options.has(K_WIDTH_KEY)) {
-            canvasWidth = options.getInt(K_WIDTH_KEY)
-            captureWidth = canvasWidth
-            width = captureWidth
-        }
-
-        // height
-        if (options.has(K_HEIGHT_KEY)) {
-            canvasHeight = options.getInt(K_HEIGHT_KEY)
-            captureHeight = canvasHeight
-            height = captureHeight
         }
 
         // hasThumbnail

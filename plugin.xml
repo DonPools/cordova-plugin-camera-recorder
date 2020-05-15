@@ -19,6 +19,7 @@
         <framework src="org.jetbrains.kotlin:kotlin-stdlib:1.3.71" />
         <framework src="org.jetbrains.kotlinx:kotlinx-coroutines-android:1.3.4" />
         <framework src="androidx.core:core-ktx:1.2.0" />
+        <framework src="com.drewnoakes:metadata-extractor:2.13.0" />
     
         <apply-plugin>kotlin-android-extensions</apply-plugin>
         <apply-plugin>kotlin-android</apply-plugin>

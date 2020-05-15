@@ -1,10 +1,8 @@
 package cordova.plugin.camerarecorder
 
-import ImageUtil
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
-import android.graphics.Bitmap
 import android.graphics.ImageFormat
 import android.hardware.camera2.*
 import android.media.Image
@@ -16,14 +14,16 @@ import android.os.HandlerThread
 import android.util.Base64
 import android.util.Log
 import android.util.Range
+import android.util.Size
 import android.view.Surface
-import android.view.WindowManager
 import com.cordova.plugin.camerarecorder.PreviewOptions
+import com.drew.imaging.ImageMetadataReader
+import com.drew.metadata.exif.ExifIFD0Directory
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.apache.cordova.CallbackContext
 import org.apache.cordova.PluginResult
 import org.json.JSONObject
-import java.io.ByteArrayOutputStream
+import java.io.ByteArrayInputStream
 import java.io.File
 import java.nio.ByteBuffer
 import java.text.SimpleDateFormat
@@ -56,6 +56,35 @@ class CameraSession(
     private val imageReader: ImageReader by lazy {
         ImageReader.newInstance(options.canvasWidth, options.canvasHeight, imageFormat, 10)
     }
+
+    private val supportSizes: Array<Size> by lazy {
+        val streamConfigurationMap = cameraCharacteristics[CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP]
+        val sizes = streamConfigurationMap.getOutputSizes(ImageFormat.JPEG)
+        sizes
+    }
+
+    private val cameraId: String by lazy {
+        var targetCameraId = ""
+        for (cameraId in cameraManager.cameraIdList) {
+            val cameraCharacteristics = cameraManager.getCameraCharacteristics(cameraId)
+            val cameraFacing = cameraCharacteristics.get(CameraCharacteristics.LENS_FACING)
+            if (options.cameraFacing == cameraFacing) {
+                targetCameraId = cameraId
+                break
+            }
+        }
+
+        if (targetCameraId == "") {
+            throw (Exception("Invalid facing: " + options.cameraFacing))
+        }
+
+        targetCameraId
+    }
+
+    private val cameraCharacteristics: CameraCharacteristics by lazy {
+        cameraManager.getCameraCharacteristics(cameraId)
+    }
+
     private val outputFile: File by lazy { createFile(activity, "mp4") }
     private val recorder: MediaRecorder by lazy { createRecorder(recorderSurface) }
 
@@ -105,9 +134,7 @@ class CameraSession(
             throw(Exception("Already capturing"))
         }
 
-        val cameraId = getCameraId(options.cameraFacing)
-        camera = openCamera(cameraManager, cameraId, cameraHandler)
-
+        camera = openCamera(cameraManager, cameraHandler)
         val targets = listOf(imageReader.surface, recorderSurface)
         captureSession = createCaptureSession(targets, camera, cameraHandler)
         initImageReader()
@@ -158,16 +185,27 @@ class CameraSession(
 
         Handler(callbackThread.looper).post {
             val start = System.currentTimeMillis()
-            val imageData = "data:image/jpeg;base64," +
-                    Base64.encodeToString(jpegBytes, Base64.DEFAULT)
-            Log.i(TAG, "compress cost: " + (System.currentTimeMillis() - start))
+            val jpegBuffer = ByteArrayInputStream(jpegBytes)
+            val jpegMetadata = ImageMetadataReader.readMetadata(jpegBuffer)
+            val directory = jpegMetadata.getFirstDirectoryOfType(ExifIFD0Directory::class.java)
 
+            val meta = JSONObject()
             val data = JSONObject()
             val output = JSONObject()
             val images = JSONObject()
             val fullsize = JSONObject()
 
+            for (tag in directory.tags) {
+                meta.put(tag.tagName, directory.getObject(tag.tagType))
+            }
+
+            val imageData = "data:image/jpeg;base64," +
+                    Base64.encodeToString(jpegBytes, Base64.DEFAULT)
+            Log.i(TAG, "compress cost: " + (System.currentTimeMillis() - start))
+
             fullsize.put("data", imageData)
+            fullsize.put("metadata", meta)
+            fullsize.put("cameraFacing", options.facing)
             images.put("fullsize", fullsize)
             output.put("images", images)
             data.put("output", output)
@@ -179,23 +217,10 @@ class CameraSession(
         }
     }
 
-    private fun getCameraId(facing: Int): String {
-        for (cameraId in cameraManager.cameraIdList) {
-            val cameraCharacteristics = cameraManager.getCameraCharacteristics(cameraId)
-            val cameraFacing = cameraCharacteristics.get(CameraCharacteristics.LENS_FACING)
-            if (facing == cameraFacing) {
-                return cameraId
-            }
-        }
-
-        throw (Exception("Invalid facing: " + facing))
-    }
-
     /** Opens the camera and returns the opened device (as the result of the suspend coroutine) */
     @SuppressLint("MissingPermission")
     private suspend fun openCamera(
             manager: CameraManager,
-            cameraId: String,
             handler: Handler? = null
     ): CameraDevice = suspendCancellableCoroutine { cont ->
         manager.openCamera(cameraId, object : CameraDevice.StateCallback() {
@@ -279,7 +304,7 @@ class CameraSession(
         setOutputFile(outputFile.absolutePath)
         setVideoEncodingBitRate(RECORDER_VIDEO_BITRATE)
         if (options.fps > 0) setVideoFrameRate(options.fps)
-        setVideoSize(options.width, options.height)
+        setVideoSize(options.captureWidth, options.captureHeight)
         setVideoEncoder(MediaRecorder.VideoEncoder.H264)
         setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
         setInputSurface(surface)
