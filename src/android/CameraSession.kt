@@ -184,7 +184,6 @@ class CameraSession(
         buffer.get(jpegBytes)
 
         Handler(callbackThread.looper).post {
-            val start = System.currentTimeMillis()
             val jpegBuffer = ByteArrayInputStream(jpegBytes)
             val jpegMetadata = ImageMetadataReader.readMetadata(jpegBuffer)
             val directory = jpegMetadata.getFirstDirectoryOfType(ExifIFD0Directory::class.java)
@@ -201,7 +200,6 @@ class CameraSession(
 
             val imageData = "data:image/jpeg;base64," +
                     Base64.encodeToString(jpegBytes, Base64.DEFAULT)
-            Log.i(TAG, "compress cost: " + (System.currentTimeMillis() - start))
 
             fullsize.put("data", imageData)
             fullsize.put("metadata", meta)
@@ -213,7 +211,6 @@ class CameraSession(
             val res = PluginResult(PluginResult.Status.OK, data)
             res.keepCallback = true
             previewCtx.sendPluginResult(res)
-            Log.i(TAG, "compress and callback cost: " + (System.currentTimeMillis() - start))
         }
     }
 
