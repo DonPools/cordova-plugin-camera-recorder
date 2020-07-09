@@ -241,6 +241,12 @@ CanvasCamera.prototype.createRenderer = (function (element, canvasCamera) {
         this.context.scale(-1, 1)
       }
 
+      // back iamge, mirror it.
+      if (this.cameraFacing == "back") {
+        this.context.translate(frame.dWidth, frame.dHeight)
+        this.context.scale(-1, -1)
+      }
+      
       if (this.orientation == 0) {
         this.context.translate(frame.dWidth / 2, frame.dHeight / 2);
         this.context.rotate(-90 * Math.PI / 180);
