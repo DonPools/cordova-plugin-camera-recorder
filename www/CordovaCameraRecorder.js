@@ -491,6 +491,31 @@ CanvasCamera.prototype.initialize = function (fcanvas, tcanvas) {
   }
 };
 
+
+CanvasCamera.prototype.getPermissions = function (operation, onSuccess, onError) {
+  exec(function (data) {
+    if (onSuccess && typeof onSuccess === 'function') {
+      onSuccess(data);
+    }
+  }, function (error) {
+    if (onError && typeof onError === 'function') {
+      onError(error);
+    }
+  }, this.nativeClass, 'getPermissions', [operation]);
+};
+
+CanvasCamera.prototype.getConfiguration = function (onError, onSuccess) {
+  exec(function (data) {
+    if (onSuccess && typeof onSuccess === 'function') {
+      onSuccess(data);
+    }
+  }, function (error) {
+    if (onError && typeof onError === 'function') {
+      onError(error);
+    }
+  }, this.nativeClass, 'getConfiguration', []);
+};
+
 CanvasCamera.prototype.start = function (userOptions, onError, onSuccess) {
   this.options = userOptions;
   this.setRenderingPresets();

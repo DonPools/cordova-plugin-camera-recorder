@@ -23,6 +23,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import org.apache.cordova.CallbackContext
 import org.apache.cordova.PluginResult
 import org.json.JSONObject
+import org.json.JSONArray
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.nio.ByteBuffer
@@ -107,34 +108,6 @@ class CameraSession(
     private val recordRequest: CaptureRequest by lazy {
         // Capture request holds references to target surfaces
         captureSession.device.createCaptureRequest(CameraDevice.TEMPLATE_RECORD).apply {
-            
-            // TODO 修改焦距
-            // CameraDevice 代表当前连接的相机设备
-            // CameraCharacteristics 是一个只读的相机信息提供者，其内部携带大量的相机信息
-            val cameraCharacteristics = cameraManager.getCameraCharacteristics(cameraId)
-            val LENS_INFO_MINIMUM_FOCUS_DISTANCE=cameraCharacteristics.get(CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE)
-            Log.i(TAG, "LENS_INFO_MINIMUM_FOCUS_DISTANCE"+LENS_INFO_MINIMUM_FOCUS_DISTANCE)
-            // 设备等级
-            val hardwareLevel = cameraCharacteristics.get(CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL);
-            Log.i(TAG, "hardwareLevel"+hardwareLevel)
-            // 获取具体能力
-            val int_array:IntArray = cameraCharacteristics.get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)
-
-            Log.i(TAG, "REQUEST_AVAILABLE_CAPABILITIES"+ Arrays.toString(int_array))
-
-            // set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
-            // set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
-
-            // set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF)
-            // set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF)
-
-            // val cameraZOOM = cameraCharacteristics.get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM)
-            // val cameraSize = cameraCharacteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE)
-            // Log.i(TAG, "cameraZOOM"+cameraZOOM)
-            
-            // 设置焦距
-            // set(CaptureRequest.SCALER_CROP_REGION, 2.0f)
-
             // Add the preview and recording surface targets
             addTarget(imageReader.surface)
             addTarget(recorderSurface)
@@ -157,6 +130,17 @@ class CameraSession(
         }
     }
 
+    fun getConfiguration(): JSONArray? {
+        val sizesArr = JSONArray()
+        for (itemSize in supportSizes) { 
+            val sizeList = JSONObject() 
+            sizeList.put("width", itemSize.getWidth())
+            sizeList.put("height", itemSize.getHeight())
+            sizesArr.put(sizeList)
+        }
+        return sizesArr
+    }
+    
     suspend fun startCapture() {
         if (previewing) {
             throw(Exception("Already capturing"))
@@ -298,8 +282,6 @@ class CameraSession(
     private fun initImageReader() {
         captureSession.setRepeatingRequest(
                 captureSession.device.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW).apply {
-                    // TODO 修改焦距
-
                     //set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, Range(options.fps, options.fps))
                     addTarget(imageReader.surface)
                 }.build(),

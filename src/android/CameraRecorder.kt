@@ -20,6 +20,8 @@ fun deferPluginResultCallback(callbackContext: CallbackContext) {
 
 const val SEC_START_CAPTURE = 0
 
+const val PERMISSION_OPERATION = "get"
+
 class CordovaCameraRecorder : CordovaPlugin() {
     var cameraSession: CameraSession? = null
     lateinit var activity: Activity
@@ -36,6 +38,8 @@ class CordovaCameraRecorder : CordovaPlugin() {
             "startCapture" -> handleStartCapture(data, callbackContext)
             "startRecord" -> handleStartRecord(data, callbackContext)
             "stopCapture" -> handleStopCapture(data, callbackContext)
+            "getConfiguration" -> handleGetConfiguration(data, callbackContext)
+            "getPermissions" -> handleGetPermissions(data, callbackContext)
             else -> {
                 return false
             }
@@ -60,6 +64,60 @@ class CordovaCameraRecorder : CordovaPlugin() {
         super.onDestroy()
         Log.i(TAG, "onDestroy")
         cameraSession?.onDestroy()
+    }
+
+    fun handleGetPermissions(data: JSONArray, callbackContext: CallbackContext): Boolean {
+        val checkCamera = PermissionHelper.hasPermission(this, Manifest.permission.CAMERA)
+        val checkRecordAudio = PermissionHelper.hasPermission(this, Manifest.permission.RECORD_AUDIO)
+        val checkReadExternalStorage = PermissionHelper.hasPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
+        val checkWriteExternalStorage = PermissionHelper.hasPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        
+        val operation = data.get(0)
+
+        val OK:Boolean = checkCamera && checkRecordAudio && checkReadExternalStorage && checkWriteExternalStorage
+
+        if(!OK && operation == PERMISSION_OPERATION) {
+            deferPluginResultCallback(callbackContext)
+            PermissionHelper.requestPermissions(this, SEC_START_CAPTURE,
+            arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO, Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE))
+
+            return true
+        } 
+    
+        cordova.threadPool.submit {
+            try {
+                val result = JSONObject()
+                result.put("OK", OK)
+                callbackContext.success(result)
+            } catch (ex: Exception) {
+                Log.e(TAG, "getPermissions failed.", ex)
+                callbackContext.error("Get Permissions failed:" + ex)
+            }
+        }
+
+        return true
+    }
+
+    fun handleGetConfiguration(args: JSONArray, callbackContext: CallbackContext): Boolean {
+        var options = PreviewOptions()
+
+
+        cameraSession = CameraSession(activity, options, callbackContext)
+        cordova.threadPool.submit {
+            try {
+                val resolutions = cameraSession!!.getConfiguration()
+                val result = JSONObject()
+                result.put("resolutions", resolutions)
+                cameraSession = null
+                callbackContext.success(result)
+            } catch (ex: Exception) {
+                Log.e(TAG, "getConfiguration failed.", ex)
+                cameraSession = null
+                callbackContext.error("Get Configuration failed:" + ex)
+            }
+        }
+
+        return true
     }
 
     fun handleStartCapture(data: JSONArray, callbackContext: CallbackContext): Boolean {
